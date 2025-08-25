@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Tareas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .task {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .completed {
+            text-decoration: line-through;
+        }
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button.delete {
+            background-color: red;
+            color: white;
+        }
+        button.toggle {
+            background-color: lightgreen;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lista de Tareas</h1>
+    <a th:href="@{/add}">Agregar nueva tarea</a>
+    <ul>
+        <li th:each="task : ${tasks}">
+            <span th:text="${task.name}"></span>
+            <span th:text="${task.completed ? '✔️' : '❌'}"></span>
+            <form th:action="@{/toggle}" method="post" style="display:inline;">
+                <input type="hidden" name="id" th:value="${task.id}" />
+                <button type="submit">Cambiar estado</button>
+            </form>
+            <form th:action="@{/delete}" method="post" style="display:inline;">
+                <input type="hidden" name="id" th:value="${task.id}" />
+                <button type="submit">Eliminar</button>
+            </form>
+        </li>
+    </ul>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Agregar Tarea</title>
+</head>
+<body>
+    <h1>Agregar nueva tarea</h1>
+    <form th:action="@{/add}" method="post">
+        <input type="text" name="name" placeholder="Nombre de la tarea" required />
+        <button type="submit">Agregar</button>
+    </form>
+    <a th:href="@{/}">Volver</a>
+</body>
+</html>
