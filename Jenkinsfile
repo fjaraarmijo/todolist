@@ -43,6 +43,7 @@ pipeline {
             steps {
                 script {
                     // Elimina contenedor anterior si existe
+                    sh "docker rmi ${CONTAINER_NAME}"
                     sh "docker rm -f ${CONTAINER_NAME} || true"
 
                     // Verifica si el puerto APP_PORT ya está ocupado
