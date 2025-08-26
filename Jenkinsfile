@@ -5,9 +5,6 @@ pipeline {
         }
     }
 
-    environment {
-        // Puedes agregar aquí variables de entorno necesarias
-    }
 
     options {
         // Descartar ejecuciones antiguas
