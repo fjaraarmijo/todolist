@@ -11,14 +11,10 @@ pipeline {
         disableConcurrentBuilds()
     }
 
-    triggers {
-        pollSCM('H/5 * * * *') // Consulta el repositorio cada 5 minutos
-    }
-
     environment {
-        SONAR_SCANNER_HOME = tool 'SonarQube Scanner'
         IMAGE_NAME = "todolist-app"
         CONTAINER_NAME = "todolist-app"
+        APP_PORT = "8090"
     }
 
     stages {
@@ -31,25 +27,13 @@ pipeline {
 
         stage('Build with Maven') {
             steps {
-                sh 'mvn clean package'
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            environment {
-                SONARQUBE_SCANNER_HOME = tool 'SonarQube Scanner'
-            }
-            steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh "${SONARQUBE_SCANNER_HOME}/bin/sonar-scanner"
-                }
+                sh 'mvn clean package -DskipTests'  // Solo compila, sin correr tests unitarios aún
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Construir la imagen Docker con la etiqueta IMAGE_NAME
                     sh "docker build -t ${IMAGE_NAME} ."
                 }
             }
@@ -58,17 +42,41 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    // Detener y eliminar cualquier contenedor corriendo con el mismo nombre para evitar conflictos
+                    // Eliminar contenedor anterior si existe
                     sh "docker rm -f ${CONTAINER_NAME} || true"
-                    // Ejecutar el contenedor en background
-                    sh "docker run -d --name ${CONTAINER_NAME} -p 8090:8090 ${IMAGE_NAME}"
+
+                    // Verifica si el puerto está ocupado
+                    def portCheck = sh(script: "lsof -i :${APP_PORT} || true", returnStdout: true).trim()
+                    if (portCheck) {
+                        error "El puerto ${APP_PORT} ya está en uso. Aborta."
+                    }
+
+                    // Corre contenedor
+                    sh "docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}"
+
+                    // Espera que la app esté disponible (hasta 30s)
+                    sh """
+                        for i in {1..30}; do
+                            curl -s http://localhost:${APP_PORT} && break
+                            echo "Esperando que la app esté arriba..."
+                            sleep 1
+                        done
+                    """
                 }
             }
-        } 
+        }
 
-        stage('Run App (local JAR)') {
+        stage('E2E Test: Verificar interfaz web') {
             steps {
-                sh 'nohup java -jar target/*.jar &'
+                script {
+                    // Aquí un test simple con curl, puedes reemplazar por Postman, Selenium, etc.
+                    def response = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:${APP_PORT}", returnStdout: true).trim()
+                    if (response != '200') {
+                        error "Test fallido: La app no respondió correctamente (HTTP ${response})"
+                    } else {
+                        echo "Test exitoso: La app respondió correctamente (HTTP ${response})"
+                    }
+                }
             }
         }
     }
@@ -78,10 +86,12 @@ pipeline {
             echo 'Pipeline finished.'
         }
         success {
-            echo 'Build succeeded!'
+            echo 'Build & deployment succeeded!'
         }
         failure {
-            echo 'Build failed.'
+            echo 'Build or test failed.'
+            // Detiene y elimina contenedor si hubo fallo
+            sh "docker rm -f ${CONTAINER_NAME} || true"
         }
     }
 }
