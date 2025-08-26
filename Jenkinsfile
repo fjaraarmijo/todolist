@@ -14,8 +14,9 @@ pipeline {
     environment {
         IMAGE_NAME = "todolist-app"
         CONTAINER_NAME = "todolist-app"
-        APP_PORT = "8091"
-        INTERNAL_PORT = "8090"
+        APP_PORT = "8091"         // puerto externo
+        INTERNAL_PORT = "8090"    // puerto de la app dentro del contenedor
+        DEPENDENCY_PORT = "8081"  // puerto del servicio que debe estar ya en ejecución
     }
 
     stages {
@@ -43,15 +44,19 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
+                    // Elimina contenedor anterior si existe
                     sh "docker rm -f ${CONTAINER_NAME} || true"
 
+                    // Verifica si el puerto APP_PORT ya está ocupado
                     def portCheck = sh(script: "lsof -i :${APP_PORT} || true", returnStdout: true).trim()
                     if (portCheck) {
                         error "El puerto ${APP_PORT} ya está en uso. Aborta."
                     }
 
+                    // Ejecuta el contenedor
                     sh "docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${INTERNAL_PORT} ${IMAGE_NAME}"
 
+                    // Espera hasta que la app esté arriba (HTTP 200)
                     echo "Esperando que la app esté disponible en http://localhost:${APP_PORT}..."
 
                     def maxRetries = 30
@@ -82,6 +87,26 @@ pipeline {
             }
         }
 
+        stage('Verificar puerto 8081 en uso') {
+            steps {
+                script {
+                    echo "Verificando que el puerto ${DEPENDENCY_PORT} esté ocupado..."
+
+                    def portCheck = sh(
+                        script: "lsof -i :${DEPENDENCY_PORT} || true",
+                        returnStdout: true
+                    ).trim()
+
+                    if (!portCheck) {
+                        error "Error: No hay ningún servicio escuchando en el puerto ${DEPENDENCY_PORT}. Se esperaba que estuviera en uso."
+                    } else {
+                        echo "Puerto ${DEPENDENCY_PORT} en uso correctamente:"
+                        echo "${portCheck}"
+                    }
+                }
+            }
+        }
+
         stage('E2E Test: Verificar interfaz web') {
             steps {
                 script {
@@ -105,10 +130,10 @@ pipeline {
             echo 'Pipeline finished.'
         }
         success {
-            echo 'Build & deployment succeeded!'
+            echo '✅ Build & deployment succeeded!'
         }
         failure {
-            echo 'Build or test failed.'
+            echo '❌ Build or test failed.'
             sh "docker rm -f ${CONTAINER_NAME} || true"
         }
     }
