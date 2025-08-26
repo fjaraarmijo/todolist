@@ -14,7 +14,7 @@ pipeline {
     environment {
         IMAGE_NAME = "todolist-app"
         CONTAINER_NAME = "todolist-app"
-        APP_PORT = "8091"         // Puerto del host
+        APP_PORT = "8090"         // Puerto del host
         INTERNAL_PORT = "8090"    // Puerto dentro del contenedor
         DEPENDENCY_PORT = "8090"  // Puerto del microservicio dependiente
     }
