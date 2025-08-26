@@ -14,7 +14,7 @@ pipeline {
     environment {
         IMAGE_NAME = "todolist-app"
         CONTAINER_NAME = "todolist-app"
-        APP_PORT = "8090"
+        APP_PORT = "8091"
     }
 
     stages {
@@ -52,7 +52,7 @@ pipeline {
                     }
 
                     // Corre contenedor
-                    sh "docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${APP_PORT} ${IMAGE_NAME}"
+                    sh "docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:8090 ${IMAGE_NAME}"
 
                     // Espera que la app esté disponible (hasta 30s)
                     sh """
