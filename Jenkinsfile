@@ -61,6 +61,7 @@ pipeline {
         stage('Esperar a que la app esté arriba') {
             steps {
                 script {
+                    sleep time: 30, unit: 'SECONDS'
                     echo "Esperando que la app esté disponible en http://localhost:${APP_PORT}..."
 
                     def maxRetries = 30
