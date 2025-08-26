@@ -1,21 +1,17 @@
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.8.4-jdk-11'
-        }
+    agent any
+
+    tools {
+        maven 'Maven 3.8.4'
+        jdk 'JDK 11'
     }
 
-
     options {
-        // Descartar ejecuciones antiguas
         buildDiscarder(logRotator(numToKeepStr: '10'))
-
-        // Permitir ejecuciones concurrentes
         disableConcurrentBuilds()
     }
 
     triggers {
-        // Lanzar al detectar cambios en el repositorio
         pollSCM('H/5 * * * *') // Consulta el repositorio cada 5 minutos
     }
 
@@ -35,8 +31,6 @@ pipeline {
 
         stage('SonarQube Analysis') {
             environment {
-                // Se asume que Jenkins ya tiene configurado el scanner
-                // y se está usando el SonarQube integrado con Jenkins
                 SONARQUBE_SCANNER_HOME = tool 'SonarQube Scanner'
             }
             steps {
@@ -46,17 +40,13 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    dockerImage = docker.build("todolist-app")
-                }
-            }
-        }
+        // Elimina Build Docker Image (no hay Docker disponible)
 
-        stage('Run Docker Container') {
+        // Elimina Run Docker Container
+
+        stage('Run App (local JAR)') {
             steps {
-                sh 'docker run -d -p 8090:8090 todolist-app'
+                sh 'nohup java -jar target/*.jar &'
             }
         }
     }
