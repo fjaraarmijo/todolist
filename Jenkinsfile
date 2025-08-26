@@ -14,9 +14,9 @@ pipeline {
     environment {
         IMAGE_NAME = "todolist-app"
         CONTAINER_NAME = "todolist-app"
-        APP_PORT = "8091"         // puerto externo
-        INTERNAL_PORT = "8090"    // puerto de la app dentro del contenedor
-        DEPENDENCY_PORT = "8081"  // puerto del servicio que debe estar ya en ejecución
+        APP_PORT = "8091"         // Puerto del host
+        INTERNAL_PORT = "8090"    // Puerto dentro del contenedor
+        DEPENDENCY_PORT = "8081"  // Puerto del microservicio dependiente
     }
 
     stages {
@@ -35,9 +35,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME} ."
-                }
+                sh "docker build -t ${IMAGE_NAME} ."
             }
         }
 
@@ -55,8 +53,13 @@ pipeline {
 
                     // Ejecuta el contenedor
                     sh "docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${INTERNAL_PORT} ${IMAGE_NAME}"
+                }
+            }
+        }
 
-                    // Espera hasta que la app esté arriba (HTTP 200)
+        stage('Esperar a que la app esté arriba') {
+            steps {
+                script {
                     echo "Esperando que la app esté disponible en http://localhost:${APP_PORT}..."
 
                     def maxRetries = 30
@@ -70,18 +73,18 @@ pipeline {
                         ).trim()
 
                         if (code == '200') {
-                            echo "La aplicación respondió correctamente (HTTP ${code})"
+                            echo "✅ La aplicación respondió correctamente (HTTP ${code})"
                             appUp = true
                             break
                         }
 
-                        echo "Intento ${retryCount + 1}/${maxRetries}: La app no respondió todavía (HTTP ${code}). Esperando..."
+                        echo "⏳ Intento ${retryCount + 1}/${maxRetries}: La app no respondió todavía (HTTP ${code})."
                         sleep 1
                         retryCount++
                     }
 
                     if (!appUp) {
-                        error "La aplicación no respondió en el tiempo esperado."
+                        error "❌ La aplicación no respondió en el tiempo esperado."
                     }
                 }
             }
@@ -98,9 +101,9 @@ pipeline {
                     ).trim()
 
                     if (!portCheck) {
-                        error "Error: No hay ningún servicio escuchando en el puerto ${DEPENDENCY_PORT}. Se esperaba que estuviera en uso."
+                        error "❌ No hay ningún servicio escuchando en el puerto ${DEPENDENCY_PORT}."
                     } else {
-                        echo "Puerto ${DEPENDENCY_PORT} en uso correctamente:"
+                        echo "✅ Puerto ${DEPENDENCY_PORT} en uso correctamente:"
                         echo "${portCheck}"
                     }
                 }
@@ -116,9 +119,9 @@ pipeline {
                     ).trim()
 
                     if (response != '200') {
-                        error "Test fallido: La app no respondió correctamente (HTTP ${response})"
+                        error "❌ Test fallido: La app no respondió correctamente (HTTP ${response})"
                     } else {
-                        echo "Test exitoso: La app respondió correctamente (HTTP ${response})"
+                        echo "✅ Test exitoso: La app respondió correctamente (HTTP ${response})"
                     }
                 }
             }
