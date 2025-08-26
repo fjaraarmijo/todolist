@@ -16,8 +16,9 @@ pipeline {
     }
 
     environment {
-        // Variable para que SonarScanner funcione correctamente
         SONAR_SCANNER_HOME = tool 'SonarQube Scanner'
+        IMAGE_NAME = "todolist-app"
+        CONTAINER_NAME = "todolist-container"
     }
 
     stages {
@@ -45,9 +46,25 @@ pipeline {
             }
         }
 
-        // Elimina Build Docker Image (no hay Docker disponible)
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Construir la imagen Docker con la etiqueta IMAGE_NAME
+                    sh "docker build -t ${IMAGE_NAME} ."
+                }
+            }
+        }
 
-        // Elimina Run Docker Container
+        stage('Run Docker Container') {
+            steps {
+                script {
+                    // Detener y eliminar cualquier contenedor corriendo con el mismo nombre para evitar conflictos
+                    sh "docker rm -f ${CONTAINER_NAME} || true"
+                    // Ejecutar el contenedor en background
+                    sh "docker run -d --name ${CONTAINER_NAME} -p 8080:8080 ${IMAGE_NAME}"
+                }
+            }
+        } 
 
         stage('Run App (local JAR)') {
             steps {
