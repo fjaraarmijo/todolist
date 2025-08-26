@@ -18,7 +18,7 @@ pipeline {
     environment {
         SONAR_SCANNER_HOME = tool 'SonarQube Scanner'
         IMAGE_NAME = "todolist-app"
-        CONTAINER_NAME = "todolist-container"
+        CONTAINER_NAME = "todolist-app"
     }
 
     stages {
@@ -61,7 +61,7 @@ pipeline {
                     // Detener y eliminar cualquier contenedor corriendo con el mismo nombre para evitar conflictos
                     sh "docker rm -f ${CONTAINER_NAME} || true"
                     // Ejecutar el contenedor en background
-                    sh "docker run -d --name ${CONTAINER_NAME} -p 8080:8080 ${IMAGE_NAME}"
+                    sh "docker run -d --name ${CONTAINER_NAME} -p 8090:8090 ${IMAGE_NAME}"
                 }
             }
         } 
