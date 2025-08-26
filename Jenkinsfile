@@ -15,6 +15,7 @@ pipeline {
         IMAGE_NAME = "todolist-app"
         CONTAINER_NAME = "todolist-app"
         APP_PORT = "8091"
+        INTERNAL_PORT = "8090"
     }
 
     stages {
@@ -27,7 +28,7 @@ pipeline {
 
         stage('Build with Maven') {
             steps {
-                sh 'mvn clean package -DskipTests'  // Solo compila, sin correr tests unitarios aún
+                sh 'mvn clean package -DskipTests'
             }
         }
 
@@ -42,26 +43,41 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    // Eliminar contenedor anterior si existe
                     sh "docker rm -f ${CONTAINER_NAME} || true"
 
-                    // Verifica si el puerto está ocupado
                     def portCheck = sh(script: "lsof -i :${APP_PORT} || true", returnStdout: true).trim()
                     if (portCheck) {
                         error "El puerto ${APP_PORT} ya está en uso. Aborta."
                     }
 
-                    // Corre contenedor
-                    sh "docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:8090 ${IMAGE_NAME}"
+                    sh "docker run -d --name ${CONTAINER_NAME} -p ${APP_PORT}:${INTERNAL_PORT} ${IMAGE_NAME}"
 
-                    // Espera que la app esté disponible (hasta 30s)
-                    sh """
-                        for i in {1..30}; do
-                            curl -s http://localhost:${APP_PORT} && break
-                            echo "Esperando que la app esté arriba..."
-                            sleep 1
-                        done
-                    """
+                    echo "Esperando que la app esté disponible en http://localhost:${APP_PORT}..."
+
+                    def maxRetries = 30
+                    def retryCount = 0
+                    def appUp = false
+
+                    while (retryCount < maxRetries) {
+                        def code = sh(
+                            script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:${APP_PORT}",
+                            returnStdout: true
+                        ).trim()
+
+                        if (code == '200') {
+                            echo "La aplicación respondió correctamente (HTTP ${code})"
+                            appUp = true
+                            break
+                        }
+
+                        echo "Intento ${retryCount + 1}/${maxRetries}: La app no respondió todavía (HTTP ${code}). Esperando..."
+                        sleep 1
+                        retryCount++
+                    }
+
+                    if (!appUp) {
+                        error "La aplicación no respondió en el tiempo esperado."
+                    }
                 }
             }
         }
@@ -69,8 +85,11 @@ pipeline {
         stage('E2E Test: Verificar interfaz web') {
             steps {
                 script {
-                    // Aquí un test simple con curl, puedes reemplazar por Postman, Selenium, etc.
-                    def response = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:${APP_PORT}", returnStdout: true).trim()
+                    def response = sh(
+                        script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:${APP_PORT}",
+                        returnStdout: true
+                    ).trim()
+
                     if (response != '200') {
                         error "Test fallido: La app no respondió correctamente (HTTP ${response})"
                     } else {
@@ -90,7 +109,6 @@ pipeline {
         }
         failure {
             echo 'Build or test failed.'
-            // Detiene y elimina contenedor si hubo fallo
             sh "docker rm -f ${CONTAINER_NAME} || true"
         }
     }
