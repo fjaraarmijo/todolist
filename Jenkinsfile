@@ -15,6 +15,11 @@ pipeline {
         pollSCM('H/5 * * * *') // Consulta el repositorio cada 5 minutos
     }
 
+    environment {
+        // Variable para que SonarScanner funcione correctamente
+        SONAR_SCANNER_HOME = tool 'SonarQube Scanner'
+    }
+
     stages {
         stage('Checkout') {
             steps {
