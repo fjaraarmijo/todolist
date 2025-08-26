@@ -10,11 +10,12 @@ FROM openjdk:17-jdk-slim
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8090
+ENTRYPOINT ["java","-jar","app.jar"]
+# ... tu Dockerfile anterior ...
 
-# Instala netcat para hacer check de puerto
-RUN apt-get update && apt-get install -y netcat
+EXPOSE 8090
 
-COPY wait-for-port.sh /wait-for-port.sh
-RUN chmod +x /wait-for-port.sh
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD nc -z localhost 8090 || exit 1
 
-ENTRYPOINT ["/wait-for-port.sh", "8090", "java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
